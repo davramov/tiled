@@ -100,6 +100,45 @@ async def get_zarr_array_metadata(
         )
 
 
+@router.get("{path:path}.zattrs", name="Zarr .zattrs metadata")
+@router.get("/{path:path}/.zattrs", name="Zarr .zattrs metadata")
+async def get_zarr_attrs(
+    request: Request,
+    entry=SecureEntry(
+        scopes=["read:data", "read:metadata"],
+        structure_families={
+            StructureFamily.table,
+            StructureFamily.container,
+            StructureFamily.array,
+        },
+    ),
+):
+    """
+    Return Zarr attributes metadata (.zattrs).
+    If entry.metadata() (or entry.metadata) includes "zattrs", return them.
+    Otherwise, return an empty dict.
+    """
+    # If it's an unstructured array, we do not treat it as a group for .zattrs
+    if entry.structure_family == StructureFamily.array and not isinstance(
+        entry.structure().data_type, StructDtype
+    ):
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND)
+
+    # Attempt to retrieve .zattrs from entry.metadata
+    # Some Tiled versions use entry.metadata() as a callable, others a property.
+    # We'll try one or the other:
+    try:
+        metadata_dict = entry.metadata()  # if it's callable
+    except TypeError:
+        metadata_dict = entry.metadata  # if it's a property
+
+    return Response(
+        json.dumps(metadata_dict),
+        status_code=200,
+        media_type="application/json",
+    )
+
+
 @router.get(
     "/{path:path}", name="Zarr group (directory) structure or a chunk of a zarr array"
 )

@@ -406,3 +406,39 @@ class ZarrGroupAdapter(
 
         """
         return depth <= INLINED_DEPTH
+
+
+class ZarrAttrsAdapter:
+    """
+    Adapter that exposes a Zarr node's .attrs as JSON.
+    """
+
+    structure_family = "node"  # or "container" if you prefer
+    specs: List[Spec] = []
+
+    def __init__(self, node: Union[zarr.hierarchy.Group, zarr.core.Array]):
+        """
+        node: Zarr Group or Array whose attributes we want to serve
+        """
+        self._node = node
+
+    def metadata(self) -> JSON:
+        """
+        Return any extra metadata. In this example, it's empty.
+        """
+        return {}
+
+    def structure(self):
+        """
+        We have no numeric array data to describe, just JSON attributes.
+        """
+        return None
+
+    def read(self) -> JSON:
+        """
+        Return the node's attrs as a plain dictionary.
+        """
+        return dict(self._node.attrs)
+
+    def __repr__(self) -> str:
+        return f"<ZarrAttrsAdapter attrs_keys={list(self._node.attrs.keys())}>"
